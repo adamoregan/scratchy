@@ -5,17 +5,19 @@ from soup import get_internal_urls
 
 try:
     from lxml import etree
+
     PARSER = 'lxml'
 except ImportError:
     PARSER = 'html.parser'
 
 __all__ = ['internal_scrape']
 
+
 def _internal_scrape(start_url: str, url_queue: deque, visited_urls: set):
     """
     Gets all the internal links in a webpage.
 
-    :param start_url: The url whos domain will be compared to the other links scraped.
+    :param start_url: The url whose domain will be compared to the other links scraped.
     :param url_queue: The queue of urls that need to be scraped.
     :param visited_urls: The set of urls that have already been visited.
     """
@@ -47,9 +49,9 @@ def internal_scrape(start_url: str, max_urls: int = None) -> set:
     url_queue = deque([start_url])
     visited_urls = set()
     if max_urls is None:
-        while len(url_queue) != 0:
+        while len(url_queue) != 0:  # O(1) for queue len
             _internal_scrape(start_url, url_queue, visited_urls)
     else:
-        while len(url_queue) != 0 and len(visited_urls) < max_urls:
+        while len(url_queue) != 0 and len(visited_urls) < max_urls:  # O(1) for set len
             _internal_scrape(start_url, url_queue, visited_urls)
     return visited_urls

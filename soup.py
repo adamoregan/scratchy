@@ -2,11 +2,12 @@ import bs4
 import urlutil as ut
 import urllib.parse as u
 
+
 def get_internal_urls(url: str, soup: bs4.BeautifulSoup) -> set:
     """
-    Gets all of the internal links in a soup object.
+    Gets all the internal links in a soup object.
 
-    :param url: The url whos domain is being compared to the links scraped.
+    :param url: The url whose domain is being compared to the links scraped.
     :param soup: The BeautifulSoup that is being parsed to get the internal links.
     :return: A set of all unique internal links in the soup object.
     """
