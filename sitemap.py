@@ -1,5 +1,4 @@
 from os.path import splitext, isdir
-import copy
 from fileutil import unique_me
 
 __all__ = ['create_sitemap']
@@ -78,7 +77,7 @@ def create_sitemap(urls: set, path: str = "", ext: str = ".txt", overwrite: bool
     if not overwrite:
         path = unique_me(path)
     # Justification: To not impact the given urls, since they may be needed for other operations.
-    urls = copy.deepcopy(urls)  # O(N)
+    urls = set(urls)
     with open(path, "w") as sitemap:
         _write_sitemap(sitemap, urls, ext)
     return urls  # remaining urls, if any, for additional sitemap creations
