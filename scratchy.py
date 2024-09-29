@@ -2,6 +2,7 @@ import bs4
 import requests
 from collections import deque
 from soup import get_internal_urls
+from sitemap import *
 
 try:
     from lxml import etree
@@ -55,3 +56,17 @@ def internal_scrape(start_url: str, max_urls: int = None) -> set:
         while len(url_queue) != 0 and len(visited_urls) < max_urls:  # O(1) for set len
             _internal_scrape(start_url, url_queue, visited_urls)
     return visited_urls
+
+
+def generate_sitemaps(start_url: str, sitemap_ext: str = ".txt", path: str = "") -> None:
+    """
+    Gets all the internal links of a website to construct a sitemap of that website.
+    :param start_url: The starting url of the website to construct the sitemap for.
+    :param sitemap_ext: The desired extension of the sitemap.
+    :param path: The path to output the file at. Handles directory paths and file paths.
+    If a file path is entered, entering the extension is redundant.
+    """
+    urls = internal_scrape(start_url, 100)
+    while len(urls) != 0:
+        urls = create_sitemap(urls, path, sitemap_ext, overwrite=False)
+

@@ -1,55 +1,73 @@
 from os.path import splitext, isdir
 from fileutil import unique_me
+import xml.etree.ElementTree as ET  # writing XML
 
 __all__ = ['create_sitemap']
+
 SUPPORTED_EXTS = (".txt", ".xml")
 SITEMAP_URL_LIMIT = 50000
+ENCODING = "utf-8"
+DEFAULT_FILENAME = "sitemap"
 
 
-def _write_txt(sitemap_file, urls: set) -> None:
+def _write_txt(sitemap_file, urls: set[str]) -> set[str]:
     """
     Writes urls to a .txt sitemap file.
     :param sitemap_file: The .txt sitemap file to be written to.
     :param urls: The urls to be written to the file.
+    :return A set of the urls that were written to the file.
     """
     num_urls_written = 0
-    while num_urls_written < SITEMAP_URL_LIMIT and len(urls) > 0:  # O(1) for set len
-        current_url = urls.pop()  # O(1)
-        sitemap_file.write(current_url + "\n")
+    written_urls = set()
+    for url in urls:
+        sitemap_file.write(f"{url}\n")
         num_urls_written += 1
+        written_urls.add(url)
+    return written_urls
 
 
-def _write_xml(sitemap_file, urls: set) -> None:
-    num_urls_written = 0
-    xml_format = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-    sitemap_file.write(xml_format + "\n")
-    xml_format = "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"
-    sitemap_file.write(xml_format + "\n")
-    url_tag_open, url_tag_close = "  <url>", "  </url>"
-    while num_urls_written < SITEMAP_URL_LIMIT and len(urls) > 0:
-        current_url = urls.pop()  # O(1)
-        sitemap_file.write(url_tag_open + "\n")
-        loc = f"    <loc>{current_url}</loc>"
-        sitemap_file.write(loc + "\n")
-        sitemap_file.write(url_tag_close + "\n")
-    xml_format = "</urlset>"
-    sitemap_file.write(xml_format)
-
-
-def _write_sitemap(sitemap_file, urls: set, ext: str) -> None:
+def _write_xml(sitemap_file, urls: set[str]) -> set[str]:
     """
-    Writes urls into a sitemap file of a specific extension.
+    Writes urls to a .xml sitemap file in binary.
+    :param sitemap_file: The .xml sitemap file to be written to.
+    :param urls: The urls to be written to the file.
+    :return A set of the urls that were written to the file.
+    """
+    num_urls_written = 0
+    written_urls = set()
+    root = ET.Element("urlset")
+    root.set("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")
+    for url in urls:
+        if num_urls_written >= SITEMAP_URL_LIMIT:
+            break
+        url_elm = ET.SubElement(root, "url")
+        loc_elem = ET.SubElement(url_elm, "loc")
+        loc_elem.text = url
+        num_urls_written += 1
+        written_urls.add(url)
+    tree = ET.ElementTree(root)
+    ET.indent(tree)  # Readability
+    try:
+        tree.write(sitemap_file, encoding=ENCODING, xml_declaration=True)
+    except Exception as e:
+        raise RuntimeError(f"Failed to write XML: {e}")
+    return written_urls
+
+
+def _write_sitemap_file(sitemap_file, urls: set[str], ext: str) -> set[str]:
+    """
+    Writes urls into a sitemap file of .txt or .xml format.
     :param sitemap_file: The file to write the urls to.
     :param urls: The urls to write to the file.
-    :param ext: The extension of the sitemap file.
+    :param ext: The extension to determine the output.
+    :return A set of the urls that were writen to the .txt file or the .xml file.
     """
     if ext == ".xml":
-        _write_xml(sitemap_file, urls)
-    else:
-        _write_txt(sitemap_file, urls)
+        return _write_xml(sitemap_file, urls)
+    return _write_txt(sitemap_file, urls)
 
 
-def create_sitemap(urls: set, path: str = "", ext: str = ".txt", overwrite: bool = True) -> set:
+def create_sitemap(urls: set[str], path: str = "", ext: str = ".txt", overwrite: bool = True) -> set[str]:
     """
     Creates a sitemap file in .txt or .xml format at a given path (if specified).
 
@@ -58,6 +76,7 @@ def create_sitemap(urls: set, path: str = "", ext: str = ".txt", overwrite: bool
 
     :param urls: The urls to be written to the sitemap file. Accepted as a set to ensure unique values.
     :param path: The path to create the sitemap at. Supports directory paths and file paths.
+    If a directory path is given, creates a file with the DEFAULT_FILENAME.
     :param ext: The extension of the desired sitemap.<br>
     If a file path is given, the ext argument becomes redundant.
     :param overwrite: If file overwriting is allowed.<br>
@@ -65,19 +84,27 @@ def create_sitemap(urls: set, path: str = "", ext: str = ".txt", overwrite: bool
     :return: The urls that were not written to the file due to the url limit.
     Or an empty set if all urls are written to the file.
     """
-    # By default, creates a file at the cwd.
-    # If the user enters a directory, creates the sitemap at that directory.
-    if path == "" or isdir(path):
-        path += "sitemap" + ext
-    # If a file path is given, the extension is checked.
+    if not urls:
+        return set()
+    # If path is a directory or not provided, construct default filename
+    if not path or isdir(path):
+        path = f"{path}{DEFAULT_FILENAME}{ext}"
     else:
         ext = splitext(path)[1]
     if ext not in SUPPORTED_EXTS:
-        raise ValueError("Valid extension not detected.")
+        raise ValueError(f"Unsupported file extension: {ext}")
+    # Creates unique filename if overwriting is not allowed
     if not overwrite:
         path = unique_me(path)
-    # Justification: To not impact the given urls, since they may be needed for other operations.
-    urls = set(urls)
-    with open(path, "w") as sitemap:
-        _write_sitemap(sitemap, urls, ext)
-    return urls  # remaining urls, if any, for additional sitemap creations
+    # Sets the write mode based on the file extension
+    write_mode = "wb" if ext == ".xml" else "w"
+    try:
+        with open(path, write_mode, encoding=None if ext == ".xml" else ENCODING) as sitemap_file:
+            written_urls = _write_sitemap_file(sitemap_file, urls, ext)
+    except OSError as e:
+        raise RuntimeError(f"Failed to create file at {path}: {e}")
+    if len(urls) <= SITEMAP_URL_LIMIT:
+        leftover_urls = set()
+    else:
+        leftover_urls = urls - written_urls  # O(N)
+    return leftover_urls
