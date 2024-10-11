@@ -47,7 +47,7 @@ Manages the creation of uniquely named files. The created files follow the forma
 
 For questions, feedback, or sending of cute cat pictures, reach me at:
 
-- **Adam O'Regan**
+- **Adam O'Regan**  
 Email: [adamoregan457@gmail.com](mailto:adamoregan457@gmail.com)  
 Github: [adamoregan](https://github.com/adamoregan)  
 LinkedIn: [adamoregan457](https://www.linkedin.com/in/adamoregan457)  
